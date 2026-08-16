@@ -1,0 +1,98 @@
+/* ─────────────────────────────────────────────────────────────
+   공통 스타일 토큰 — design/mockup.html 시안 기준
+   편집기 UI: 화이트 베이스 + 비비드 포인트(#FF3E63)
+   ───────────────────────────────────────────────────────────── */
+:root {
+  --bg: #FFFFFF;
+  --card: #FFFFFF;
+  --border: #ECEEF2;
+  --border-strong: #DFE2E8;
+  --ink: #17181C;
+  --sub: #767C86;
+  --faint: #A6ACB6;
+  --accent: #FF3E63;
+  --accent-soft: #FFEDF1;
+  --good: #12B76A;
+  --good-soft: #E8F9F0;
+  --warn: #B54708;
+  --warn-soft: #FEF0C7;
+  --radius: 12px;
+  --shadow: 0 1px 2px rgba(23, 24, 28, .04), 0 4px 14px rgba(23, 24, 28, .05);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  font-family: 'Noto Sans KR', sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+}
+button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+input, textarea, select { font-family: inherit; }
+a { color: inherit; }
+
+/* 공용 버튼 */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  font-size: 13px; font-weight: 500; padding: 9px 14px; border-radius: 9px;
+  transition: filter .15s;
+}
+.btn:hover { filter: brightness(.96); }
+.btn-primary { background: var(--accent); color: #fff; box-shadow: 0 4px 12px rgba(255, 62, 99, .25); }
+.btn-ghost { color: var(--sub); border: 1px solid var(--border); }
+.btn svg { width: 14px; height: 14px; }
+.btn:disabled { opacity: .5; cursor: default; }
+
+/* 상태 칩 */
+.chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 12px; font-weight: 500; padding: 5px 10px; border-radius: 999px;
+  background: var(--good-soft); color: var(--good);
+}
+.chip .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.chip-warn { background: var(--warn-soft); color: var(--warn); }
+.chip-plain { background: var(--bg); color: var(--sub); border: 1px solid var(--border); }
+
+/* 토글 스위치 */
+.switch { position: relative; width: 34px; height: 20px; flex-shrink: 0; }
+.switch input { opacity: 0; width: 0; height: 0; }
+.slider {
+  position: absolute; inset: 0; background: #D6DEE4; border-radius: 999px;
+  transition: .2s; cursor: pointer;
+}
+.slider:before {
+  content: ""; position: absolute; width: 14px; height: 14px; left: 3px; top: 3px;
+  background: #fff; border-radius: 50%; transition: .2s;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .15);
+}
+.switch input:checked + .slider { background: var(--accent); }
+.switch input:checked + .slider:before { transform: translateX(14px); }
+
+/* 폼 요소 */
+.field { margin-bottom: 12px; }
+.field label { display: block; font-size: 12px; font-weight: 500; color: var(--sub); margin-bottom: 5px; }
+.field input[type=text], .field input[type=url], .field input[type=tel],
+.field input[type=date], .field input[type=time], .field input[type=datetime-local],
+.field textarea, .field select {
+  width: 100%; border: 1px solid var(--border); border-radius: 9px;
+  padding: 9px 12px; font-size: 13px; color: var(--ink); background: var(--card);
+  outline: none; transition: border-color .15s;
+}
+.field input:focus, .field textarea:focus, .field select:focus { border-color: var(--accent); }
+.field textarea { resize: vertical; min-height: 80px; line-height: 1.6; }
+
+/* 토스트 */
+.toast {
+  position: fixed; bottom: 28px; left: 50%;
+  transform: translateX(-50%) translateY(10px);
+  background: #17181C; color: #fff; font-size: 12.5px;
+  padding: 10px 18px; border-radius: 999px;
+  opacity: 0; pointer-events: none; transition: .25s; z-index: 100;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; scroll-behavior: auto !important; }
+}
