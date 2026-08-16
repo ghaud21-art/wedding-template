@@ -16,6 +16,7 @@
   --inv-body: 'Noto Sans KR', sans-serif;
   --inv-radius: 14px;
   --inv-section-spacing: 44px;
+  --inv-divider: solid;
 
   background: var(--inv-bg);
   color: var(--inv-ink);
@@ -27,7 +28,7 @@
 
 .inv section {
   padding: var(--inv-section-spacing) 26px;
-  border-bottom: 1px solid var(--inv-line);
+  border-bottom: 1px var(--inv-divider, solid) var(--inv-line);
 }
 .inv section:last-of-type { border-bottom: none; }
 .inv .sec-eyebrow {
@@ -84,6 +85,8 @@
 
 /* 갤러리 */
 .gal-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.gal-grid .gal-ph { aspect-ratio: 1; border-radius: 8px; background: var(--inv-line); }
+.gal-grid .gal-ph:nth-child(2n) { opacity: .65; }
 .gal-grid button {
   aspect-ratio: 1; border-radius: 8px; overflow: hidden;
   background: var(--inv-line); padding: 0; display: block; width: 100%;
@@ -122,6 +125,21 @@
   border: 1px solid var(--inv-line); border-radius: var(--inv-radius);
   overflow: hidden; background: var(--inv-card);
 }
+.map-canvas {
+  height: 150px;
+  background:
+    linear-gradient(0deg, transparent 48%, var(--inv-line) 49%, var(--inv-line) 51%, transparent 52%),
+    linear-gradient(90deg, transparent 48%, var(--inv-line) 49%, var(--inv-line) 51%, transparent 52%),
+    var(--inv-bg);
+  display: flex; align-items: center; justify-content: center;
+}
+.map-pin {
+  width: 34px; height: 34px; border-radius: 50% 50% 50% 0;
+  background: var(--inv-accent); transform: rotate(-45deg);
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, .18);
+}
+.map-pin::after { content: ""; width: 10px; height: 10px; background: #fff; border-radius: 50%; }
 .map-info { padding: 14px 16px; }
 .map-info b { font-size: 13.5px; }
 .map-info p { font-size: 12px; color: var(--inv-sub); margin-top: 3px; white-space: pre-line; }
@@ -222,3 +240,17 @@
   font-family: var(--inv-display); font-size: 11px;
   letter-spacing: 3px; color: var(--inv-sub);
 }
+
+/* ───────── 하객 뷰어 셸 (전체 화면) ───────── */
+.viewer-page { background: #EDEEF0; min-height: 100vh; }
+.viewer-shell {
+  max-width: 430px; margin: 0 auto; min-height: 100vh;
+  background: var(--inv-bg, #FDFBF7);
+  box-shadow: 0 0 40px rgba(23, 24, 28, .08);
+}
+.viewer-notice {
+  min-height: 100vh; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 12px;
+  padding: 32px; text-align: center; color: var(--sub); font-size: 13px; line-height: 1.7;
+}
+.viewer-notice b { color: var(--ink); font-size: 15px; }
