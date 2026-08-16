@@ -21,8 +21,15 @@ export function startViewer(app, sheetId) {
   styleEl.dataset.role = 'custom-css';
   document.head.appendChild(styleEl);
 
-  // TODO(4단계): sheetId로 config!A1을 읽어온다. 지금은 샘플.
-  const config = normalizeConfig(sampleConfig());
+  // TODO(4단계): sheetId로 config!A1을 읽어온다. 지금은 샘플/드래프트.
+  let config;
+  if (sheetId === 'draft') {
+    // 편집기 "미리보기 새 창" — localStorage의 편집 중 초안을 보여준다
+    try {
+      config = normalizeConfig(JSON.parse(localStorage.getItem('inviteStudio.draft')));
+    } catch { /* 초안이 없으면 샘플로 */ }
+  }
+  config = config || normalizeConfig(sampleConfig());
   const guestbook = sampleGuestbook();
 
   render(invEl, styleEl, config, guestbook);
