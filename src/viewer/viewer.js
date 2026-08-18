@@ -10,6 +10,7 @@ import { normalizeConfig } from '../lib/defaultConfig.js';
 import { sampleConfig, sampleGuestbook } from '../lib/sample.js';
 import { toast } from '../lib/toast.js';
 import { isApiKeyConfigured, loadPublicConfig, loadPublicGuestbook } from '../lib/google.js';
+import { isGasConfigured, submitGuestbook, submitRsvp } from '../lib/gas.js';
 
 let cleanup = null;
 
@@ -66,10 +67,13 @@ export async function startViewer(app, sheetId) {
   const names = [config.couple.groom.name, config.couple.bride.name].filter(Boolean);
   if (names.length === 2) document.title = `${names[0]} & ${names[1]} 결혼합니다`;
 
+  // 실제 하객 접속 + GAS 설정 완료 시에만 쓰기 핸들러 연결
+  const live = sheetId !== 'sample' && sheetId !== 'draft' && isGasConfigured();
   cleanup = renderInvitation(invEl, config, {
     guestbook,
     toast,
-    // onRsvp / onGuestbook은 5단계(GAS 프록시)에서 연결
+    onRsvp: live ? (payload) => submitRsvp(sheetId, payload) : null,
+    onGuestbook: live ? (payload) => submitGuestbook(sheetId, payload) : null,
   });
 }
 

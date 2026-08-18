@@ -14,6 +14,14 @@ export const GOOGLE_API_KEY = 'YOUR_API_KEY';
 export const GAS_ENDPOINT = 'https://script.google.com/macros/s/YOUR_DEPLOY_ID/exec';
 
 /**
+ * GAS를 배포한 구글 계정 이메일.
+ * 하객의 방명록/RSVP는 이 계정(GAS)이 대신 시트에 기록하므로,
+ * 시트를 만들 때 이 계정에 편집 권한을 자동으로 부여한다.
+ * 비워두면 권한 부여를 건너뛴다 (방명록/RSVP 기록 비활성).
+ */
+export const GAS_OWNER_EMAIL = '';
+
+/**
  * 편집자 OAuth scope
  *  - spreadsheets: 본인 시트 읽기/쓰기
  *  - drive.file: 이 앱이 만든 파일에 한해 공유 설정 변경 (하객 링크 공개용)

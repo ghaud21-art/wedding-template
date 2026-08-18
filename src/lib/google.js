@@ -4,7 +4,7 @@
 // 편집자: OAuth 토큰으로 본인 시트 생성/읽기/쓰기
 // 하객:   로그인 없음 — API 키 + "링크 공개" 시트를 읽기 전용 조회
 // ─────────────────────────────────────────────────────────────
-import { GOOGLE_CLIENT_ID, GOOGLE_API_KEY, OAUTH_SCOPE } from '../config.js';
+import { GOOGLE_CLIENT_ID, GOOGLE_API_KEY, OAUTH_SCOPE, GAS_OWNER_EMAIL } from '../config.js';
 
 const SHEETS = 'https://sheets.googleapis.com/v4/spreadsheets';
 const TOKEN_KEY = 'inviteStudio.token';
@@ -125,6 +125,17 @@ export async function createInvitationSheet(initialConfig) {
     method: 'POST',
     body: JSON.stringify({ role: 'reader', type: 'anyone' }),
   });
+
+  // 하객의 방명록/RSVP는 GAS(배포자 계정)가 대신 기록하므로 편집 권한 부여
+  if (GAS_OWNER_EMAIL) {
+    await authedFetch(
+      `https://www.googleapis.com/drive/v3/files/${sheetId}/permissions?sendNotificationEmail=false`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ role: 'writer', type: 'user', emailAddress: GAS_OWNER_EMAIL }),
+      },
+    ).catch(() => { /* 권한 부여 실패 시에도 청첩장 자체는 동작 (방명록 기록만 제한) */ });
+  }
 
   return sheetId;
 }
