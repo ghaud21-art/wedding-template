@@ -12,6 +12,8 @@ import { renderInvitation } from '../render/blocks.js';
 import { applyDesign } from '../render/design.js';
 import { toast } from '../lib/toast.js';
 import { esc, parseDate, fmtDateShort, fmtWeekday, copyText } from '../lib/util.js';
+import { isGasConfigured } from '../lib/gas.js';
+import { requestDesign } from './ai.js';
 
 export const DRAFT_KEY = 'inviteStudio.draft';
 
@@ -515,15 +517,37 @@ function wireChat() {
     chips.appendChild(b);
   }
 
-  const send = () => {
+  const send = async () => {
     const text = els.chatInput.value.trim();
     if (!text) return;
     addMsg(text, 'user');
     els.chatInput.value = '';
-    // Gemini 연결(6단계) 전까지 안내만
-    setTimeout(() => {
-      addMsg('AI 자유 디자인은 곧 연결돼요. 지금은 위의 스와치 4종과 빠른 버튼으로 색감을 바꿔볼 수 있어요.', 'ai');
-    }, 350);
+
+    if (!isGasConfigured()) {
+      setTimeout(() => {
+        addMsg('AI 디자인은 GAS 프록시 배포 후에 켜져요 (README 참고). 지금은 위의 스와치와 빠른 버튼으로 색감을 바꿔볼 수 있어요.', 'ai');
+      }, 300);
+      return;
+    }
+
+    const sendBtn = document.getElementById('chatSend');
+    sendBtn.disabled = true;
+    els.chatInput.disabled = true;
+    const thinking = addMsg('디자인을 만들고 있어요…', 'ai');
+
+    try {
+      const res = await requestDesign(config, text);
+      const applied = applyAiResult(res);
+      thinking.remove();
+      addMsg(res.reply || '적용했어요.', 'ai', applied ? '미리보기에 적용됨' : null);
+    } catch (e) {
+      thinking.remove();
+      addMsg(`요청을 처리하지 못했어요. ${e.message}`, 'ai');
+    } finally {
+      sendBtn.disabled = false;
+      els.chatInput.disabled = false;
+      els.chatInput.focus();
+    }
   };
   document.getElementById('chatSend').addEventListener('click', send);
   els.chatInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') send(); });
@@ -541,4 +565,30 @@ function addMsg(text, who, applied) {
   }
   els.chatScroll.appendChild(div);
   els.chatScroll.scrollTop = els.chatScroll.scrollHeight;
+  return div;
+}
+
+/** AI 응답을 설정에 반영. 하나라도 적용했으면 true */
+function applyAiResult(res) {
+  let applied = false;
+  if (res.design && typeof res.design === 'object') {
+    if (res.design.tokens && typeof res.design.tokens === 'object') {
+      Object.assign(config.design.tokens, res.design.tokens);
+      applied = true;
+    }
+    if (typeof res.design.customCss === 'string') {
+      config.design.customCss = res.design.customCss; // 렌더 시 sanitize
+      applied = true;
+    }
+  }
+  if (Array.isArray(res.blocks) && res.blocks.length) {
+    config = normalizeConfig({ ...config, blocks: res.blocks });
+    applied = true;
+  }
+  if (applied) {
+    renderThemeRow();
+    if (!selectedBlock) renderLeftPanel(); // 블록 구성이 바뀌었을 수 있음
+    markChanged();
+  }
+  return applied;
 }
