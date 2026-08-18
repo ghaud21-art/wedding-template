@@ -13,8 +13,9 @@ export const GOOGLE_API_KEY = 'YOUR_API_KEY';
 /** GAS 웹앱 배포 URL (방명록/RSVP 쓰기 + Gemini 프록시) */
 export const GAS_ENDPOINT = 'https://script.google.com/macros/s/YOUR_DEPLOY_ID/exec';
 
-/** 온보딩에서 안내할 템플릿 시트 "사본 만들기" 링크 */
-export const TEMPLATE_SHEET_URL = 'https://docs.google.com/spreadsheets/d/YOUR_TEMPLATE_SHEET_ID/copy';
-
-/** 편집자 OAuth scope — 본인 시트 읽기/쓰기 최소 권한 */
-export const OAUTH_SCOPE = 'https://www.googleapis.com/auth/spreadsheets';
+/**
+ * 편집자 OAuth scope
+ *  - spreadsheets: 본인 시트 읽기/쓰기
+ *  - drive.file: 이 앱이 만든 파일에 한해 공유 설정 변경 (하객 링크 공개용)
+ */
+export const OAUTH_SCOPE = 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file';

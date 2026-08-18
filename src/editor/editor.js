@@ -11,7 +11,7 @@ import { sampleGuestbook } from '../lib/sample.js';
 import { renderInvitation } from '../render/blocks.js';
 import { applyDesign } from '../render/design.js';
 import { toast } from '../lib/toast.js';
-import { esc, parseDate, fmtDateShort, fmtWeekday } from '../lib/util.js';
+import { esc, parseDate, fmtDateShort, fmtWeekday, copyText } from '../lib/util.js';
 
 export const DRAFT_KEY = 'inviteStudio.draft';
 
@@ -44,16 +44,21 @@ const I = {
 };
 
 let config;
+let session = { sheetId: null, saveRemote: null };
 let selectedBlock = null;
 let previewCleanup = null;
 let saveTimer = null;
 let previewTimer = null;
 let els = {};
 
-/* ───────── 진입 ───────── */
-
-export function startEditor(app) {
-  config = loadDraft();
+/* ───────── 진입 ─────────
+   opts.sheetId    연결된 구글시트 ID (없으면 데모 모드: localStorage만)
+   opts.config     시트에서 불러온 설정
+   opts.saveRemote (config) => Promise — 시트 저장 함수 */
+export function startEditor(app, opts = {}) {
+  session = { sheetId: opts.sheetId || null, saveRemote: opts.saveRemote || null };
+  config = opts.config || loadDraft();
+  selectedBlock = null;
   document.body.dataset.view = 'preview';
 
   app.innerHTML = `
@@ -64,7 +69,7 @@ export function startEditor(app) {
         <div class="tb-sub" id="tbSub"></div>
       </div>
       <div class="tb-spacer"></div>
-      <span class="chip" id="saveChip"><span class="dot"></span>저장됨</span>
+      <span class="chip" id="saveChip"><span class="dot"></span>${session.sheetId ? '시트 연결됨' : '데모 모드'}</span>
       <button class="btn btn-ghost" id="btnPreview">미리보기</button>
       <button class="btn btn-primary" id="btnShare">${I.link}<span class="txt">하객 링크 복사</span></button>
     </header>
@@ -152,10 +157,22 @@ function markChanged() {
   saveTimer = setTimeout(saveDraft, 2000);
 }
 
-function saveDraft() {
-  localStorage.setItem(DRAFT_KEY, JSON.stringify(config));
-  els.saveChip.classList.remove('chip-warn');
-  els.saveChip.innerHTML = '<span class="dot"></span>저장됨';
+async function saveDraft() {
+  localStorage.setItem(DRAFT_KEY, JSON.stringify(config)); // 새 창 미리보기용 캐시
+  if (!session.saveRemote) {
+    els.saveChip.classList.remove('chip-warn');
+    els.saveChip.innerHTML = '<span class="dot"></span>저장됨 (로컬)';
+    return;
+  }
+  try {
+    await session.saveRemote(config);
+    els.saveChip.classList.remove('chip-warn');
+    els.saveChip.innerHTML = '<span class="dot"></span>시트에 저장됨';
+  } catch (e) {
+    els.saveChip.classList.add('chip-warn');
+    els.saveChip.innerHTML = '<span class="dot"></span>저장 실패';
+    toast(`시트 저장에 실패했어요: ${e.message}. 다음 수정 때 다시 시도해요.`);
+  }
 }
 
 function updateTopbarSub() {
@@ -174,8 +191,15 @@ function wireTopbar() {
     saveDraft();
     window.open(`${location.pathname}?id=draft`, '_blank');
   });
-  document.getElementById('btnShare').addEventListener('click', () => {
-    toast('구글시트 연결(다음 단계) 후 하객 링크를 복사할 수 있어요');
+  document.getElementById('btnShare').addEventListener('click', async () => {
+    if (!session.sheetId) {
+      toast('데모 모드예요. 구글로 로그인하면 하객에게 보낼 링크가 생겨요');
+      return;
+    }
+    saveDraft();
+    const url = `${location.origin}${location.pathname}?id=${session.sheetId}`;
+    const ok = await copyText(url);
+    toast(ok ? '하객 링크가 복사되었어요. 카톡으로 공유해 보세요!' : `복사 실패 — 주소: ${url}`);
   });
 }
 
