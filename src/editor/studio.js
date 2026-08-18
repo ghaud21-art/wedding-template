@@ -12,7 +12,7 @@ import { startEditor } from './editor.js';
 import { toast } from '../lib/toast.js';
 import { defaultConfig, normalizeConfig } from '../lib/defaultConfig.js';
 import {
-  isGoogleConfigured, ensureToken, createInvitationSheet, loadConfigFromSheet, saveConfigToSheet,
+  isGoogleConfigured, ensureToken, createInvitationSheet, loadConfigFromSheet, saveConfigToSheet, findMySheet,
 } from '../lib/google.js';
 
 const SHEET_KEY = 'inviteStudio.sheetId';
@@ -70,7 +70,7 @@ function renderLanding(app) {
 async function onboard(app) {
   let sheetId = localStorage.getItem(SHEET_KEY);
 
-  // 기존 시트가 있으면 불러오기
+  // 1) 이 브라우저에 기억된 시트가 있으면 바로 불러오기
   if (sheetId) {
     showLoading(app, '청첩장을 불러오는 중이에요…');
     try {
@@ -78,8 +78,8 @@ async function onboard(app) {
       openEditor(app, sheetId, normalizeConfig(raw));
       return;
     } catch (e) {
-      // 시트가 삭제되었거나 다른 계정으로 로그인한 경우 → 새로 만든다
       if (e.status === 403 || e.status === 404) {
+        // 이 브라우저 기록이 더 이상 유효하지 않음(삭제/다른 계정) → 드라이브에서 다시 찾는다
         localStorage.removeItem(SHEET_KEY);
         sheetId = null;
       } else {
@@ -89,7 +89,23 @@ async function onboard(app) {
     }
   }
 
-  // 새 시트 생성
+  // 2) 로컬 기록이 없어도(다른 기기·브라우저·시크릿 창) 같은 계정이면
+  //    이 앱으로 만든 기존 시트를 드라이브에서 찾아 재사용한다 — 새 시트 중복 생성을 막는다
+  showLoading(app, '기존 청첩장이 있는지 확인하고 있어요…');
+  try {
+    const found = await findMySheet();
+    if (found) {
+      localStorage.setItem(SHEET_KEY, found);
+      const raw = await loadConfigFromSheet(found);
+      openEditor(app, found, normalizeConfig(raw));
+      return;
+    }
+  } catch (e) {
+    showError(app, '청첩장을 확인하지 못했어요', e.message);
+    return;
+  }
+
+  // 3) 정말 처음이면 새 시트 생성
   showLoading(app, '내 드라이브에 청첩장 시트를 만들고 있어요…', '처음 한 번만 진행돼요 (몇 초 걸려요)');
   try {
     const newId = await createInvitationSheet(defaultConfig());

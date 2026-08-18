@@ -48,7 +48,8 @@ export function sanitizeCss(css) {
   return filterRules(s);
 }
 
-const SAFE_SELECTOR = /^\.inv($|[\s.:#>~+[])/;
+// .inv, .inv h1, .inv-intro(블록 클래스), .inv::before … 모두 허용
+const SAFE_SELECTOR = /^\.inv($|[-\s.:#>~+[])/;
 
 function filterRules(css) {
   let out = '';

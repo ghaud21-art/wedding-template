@@ -31,9 +31,14 @@ sectionSpacing(섹션 간격, 예 "44px") divider("solid"|"dashed"|"dotted"|"non
   예시(보라 다크): bg #221E33, card #2C2743, line #3B3555, ink #F0EDF8, sub #A9A3C2, accent #C4B0FF
 
 ## design.customCss 규칙 (자유 창작 영역)
-- 모든 선택자는 반드시 .inv 로 시작한다 (예: .inv h1, .inv .inv-intro)
-- @keyframes 애니메이션 허용, @media 허용
-- 금지: @import, 외부 url(), position:fixed, 이모지 문자
+- 모든 선택자는 .inv 또는 .inv- 로 시작한다 (예: .inv h1, .inv-intro::before, .inv .sec-title)
+- @keyframes 애니메이션 허용, @media 허용, ::before/::after 허용
+- 금지: @import, url() 전부(이미지 불가 — 효과는 gradient로), position:fixed, 이모지 문자
+- .inv는 position:relative + overflow:hidden 상태다. 오버레이 효과는
+  position:absolute; inset:0; pointer-events:none 으로 만들면 안전하다.
+- 장식 효과(별빛, 반짝임, 꽃잎 등)는 ::before/::after + radial-gradient/linear-gradient
+  + @keyframes 조합으로 구현한다. 예: 별빛은 radial-gradient(2px 2px at 20% 30%, #fff, transparent)
+  여러 개를 background-image에 겹치고 opacity/transform 애니메이션을 건다.
 - 쓸 수 있는 클래스: .inv-intro .date-top .amp .venue .main-photo .inv-greeting .sec-eyebrow .sec-title .parents .inv-dday .dday-grid .dday-cell .dday-msg .gal-grid .map-box .map-info .map-btns .acc .acc-head .acc-body .acc-row .copy-btn .rsvp-card .seg .rsvp-submit .gb-msg .gb-form .contact-grid .contact-cell .cc-btns .inv-footer
 
 ## blocks

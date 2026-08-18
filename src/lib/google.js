@@ -140,6 +140,22 @@ export async function createInvitationSheet(initialConfig) {
   return sheetId;
 }
 
+/**
+ * 로컬 저장소(localStorage)와 무관하게, 이 구글 계정이 이 앱으로 만든
+ * "모바일 청첩장 데이터" 시트를 드라이브에서 찾는다.
+ * 다른 기기/브라우저/시크릿 창으로 접속해도 같은 청첩장으로 이어지게 한다.
+ * @returns {Promise<string|null>} 찾은 시트 ID, 없으면 null
+ */
+export async function findMySheet() {
+  const q = encodeURIComponent(
+    "name='모바일 청첩장 데이터' and mimeType='application/vnd.google-apps.spreadsheet' and trashed=false",
+  );
+  const data = await authedFetch(
+    `https://www.googleapis.com/drive/v3/files?q=${q}&orderBy=createdTime&fields=files(id,createdTime)&pageSize=1`,
+  );
+  return data.files?.[0]?.id || null;
+}
+
 /** (편집자) 시트에서 설정 JSON 읽기 */
 export async function loadConfigFromSheet(sheetId) {
   const res = await authedFetch(`${SHEETS}/${sheetId}/values/config!A1`);

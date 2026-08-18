@@ -9,7 +9,7 @@ import { STARTER_SWATCHES, normalizeConfig } from '../lib/defaultConfig.js';
 import { sampleConfig } from '../lib/sample.js';
 import { sampleGuestbook } from '../lib/sample.js';
 import { renderInvitation } from '../render/blocks.js';
-import { applyDesign } from '../render/design.js';
+import { applyDesign, sanitizeCss } from '../render/design.js';
 import { toast } from '../lib/toast.js';
 import { esc, parseDate, fmtDateShort, fmtWeekday, copyText } from '../lib/util.js';
 import { isGasConfigured } from '../lib/gas.js';
@@ -662,6 +662,10 @@ function applyAiResult(res) {
     if (typeof res.design.customCss === 'string') {
       config.design.customCss = res.design.customCss; // 렌더 시 sanitize
       applied = true;
+      // 안전 규칙에 전부 걸러졌다면 조용히 넘어가지 않고 알려준다
+      if (res.design.customCss.trim() && !sanitizeCss(res.design.customCss).trim()) {
+        addMsg('요청하신 장식 효과가 안전 규칙에 걸려 제외됐어요. 조금 다르게 다시 요청해 보시겠어요? (예: "인트로에 별이 반짝이는 효과 넣어줘")', 'ai');
+      }
     }
   }
   if (Array.isArray(res.blocks) && res.blocks.length) {
