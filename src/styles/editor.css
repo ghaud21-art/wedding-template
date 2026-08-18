@@ -142,7 +142,31 @@
   border: 1px solid var(--border); color: var(--sub); background: var(--card);
 }
 .quick-chips button:hover { border-color: var(--accent); color: var(--accent); }
+/* 첨부 이미지 미리보기 칩 */
+.attach-preview {
+  display: none; align-items: center; gap: 8px; padding: 8px 18px 0;
+}
+.attach-preview.show { display: flex; }
+.attach-preview img {
+  width: 44px; height: 44px; object-fit: cover; border-radius: 8px;
+  border: 1px solid var(--border);
+}
+.attach-preview span { font-size: 11.5px; color: var(--sub); flex: 1; }
+.attach-preview button { color: var(--faint); display: flex; padding: 4px; border-radius: 6px; }
+.attach-preview button:hover { color: var(--accent); background: var(--bg); }
+.attach-preview button svg { width: 14px; height: 14px; }
+
 .chat-input { display: flex; gap: 8px; padding: 12px 18px 18px; }
+.chat-attach {
+  width: 40px; height: 40px; border-radius: 10px; flex-shrink: 0;
+  border: 1px solid var(--border); color: var(--sub);
+  display: flex; align-items: center; justify-content: center;
+}
+.chat-attach:hover { border-color: var(--accent); color: var(--accent); }
+.chat-attach svg { width: 16px; height: 16px; }
+.msg-user img.msg-photo {
+  display: block; max-width: 160px; border-radius: 9px; margin-bottom: 6px;
+}
 .chat-input input {
   flex: 1; border: 1px solid var(--border); border-radius: 10px;
   padding: 10px 13px; font-size: 12.5px; outline: none; color: var(--ink);
@@ -165,8 +189,18 @@
   .phone { height: 600px; }
   body[data-view="blocks"] .panel-left { display: block; padding-bottom: 80px; }
   body[data-view="blocks"] .panel-center { display: none; }
-  body[data-view="ai"] .panel-right { display: flex; padding-bottom: 0; }
-  body[data-view="ai"] .panel-center { display: none; }
+
+  /* AI 탭: 미리보기를 그대로 두고 채팅을 바텀시트로 — 같이 보면서 수정 */
+  body[data-view="ai"] .panel-center { display: flex; padding-bottom: 47vh; }
+  body[data-view="ai"] .panel-right {
+    display: flex; position: fixed; left: 0; right: 0;
+    bottom: calc(56px + env(safe-area-inset-bottom, 0px)); height: 44vh; z-index: 55;
+    border-radius: 16px 16px 0 0; border-top: 1px solid var(--border);
+    box-shadow: 0 -10px 34px rgba(23, 24, 28, .14);
+  }
+  body[data-view="ai"] .panel-right .right-section { display: none; } /* 시트에선 채팅만 */
+  body[data-view="ai"] .chat-head { padding: 12px 18px 8px; }
+  body[data-view="ai"] .chat-head .panel-desc { display: none; }
   .tb-sub { display: none; }
   .btn span.txt { display: none; }
   .mobile-tabs {

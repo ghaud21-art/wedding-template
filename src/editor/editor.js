@@ -14,6 +14,7 @@ import { toast } from '../lib/toast.js';
 import { esc, parseDate, fmtDateShort, fmtWeekday, copyText } from '../lib/util.js';
 import { isGasConfigured } from '../lib/gas.js';
 import { requestDesign } from './ai.js';
+import { uploadImageToDrive } from '../lib/google.js';
 
 export const DRAFT_KEY = 'inviteStudio.draft';
 
@@ -43,10 +44,13 @@ const I = {
   grid: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/></svg>',
   phone: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2.5"/><path d="M12 18h.01"/></svg>',
   sparkle: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l2.4 7.6L22 12l-7.6 2.4L12 22l-2.4-7.6L2 12l7.6-2.4z"/></svg>',
+  clip: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>',
+  x: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>',
 };
 
 let config;
 let session = { sheetId: null, saveRemote: null };
+let pendingImage = null; // AI 채팅 첨부 사진 {blob, dataUrl, base64, mime, url?}
 let selectedBlock = null;
 let previewCleanup = null;
 let saveTimer = null;
@@ -102,7 +106,14 @@ export function startEditor(app, opts = {}) {
             <div class="msg msg-ai">안녕하세요! 청첩장 디자인을 도와드릴게요. 색감을 바꾸거나, 블록을 추가하거나, 문구 분위기를 바꾸고 싶으면 편하게 말씀해 주세요.</div>
           </div>
           <div class="quick-chips" id="quickChips"></div>
+          <div class="attach-preview" id="attachPreview">
+            <img id="attachThumb" alt="첨부 사진">
+            <span id="attachLabel">사진 첨부됨</span>
+            <button id="attachRemove" aria-label="첨부 취소">${I.x}</button>
+          </div>
           <div class="chat-input">
+            <input type="file" id="chatFile" accept="image/*" hidden>
+            <button class="chat-attach" id="chatAttach" aria-label="사진 첨부">${I.clip}</button>
             <input type="text" id="chatInput" placeholder="예: 좀 더 따뜻한 색감으로 바꿔줘">
             <button id="chatSend" aria-label="보내기">${I.send}</button>
           </div>
@@ -517,10 +528,26 @@ function wireChat() {
     chips.appendChild(b);
   }
 
+  // ── 사진 첨부 (버튼 + 클립보드 붙여넣기) ──
+  const fileInput = document.getElementById('chatFile');
+  document.getElementById('chatAttach').addEventListener('click', () => fileInput.click());
+  fileInput.addEventListener('change', () => {
+    if (fileInput.files[0]) setAttachment(fileInput.files[0]);
+    fileInput.value = '';
+  });
+  els.chatInput.addEventListener('paste', (e) => {
+    const item = [...(e.clipboardData?.items || [])].find((i) => i.type.startsWith('image/'));
+    if (item) {
+      e.preventDefault();
+      setAttachment(item.getAsFile());
+    }
+  });
+  document.getElementById('attachRemove').addEventListener('click', clearAttachment);
+
   const send = async () => {
     const text = els.chatInput.value.trim();
-    if (!text) return;
-    addMsg(text, 'user');
+    if (!text && !pendingImage) return;
+    addMsg(text || '이 사진으로 해줘', 'user', null, pendingImage?.dataUrl);
     els.chatInput.value = '';
 
     if (!isGasConfigured()) {
@@ -533,10 +560,18 @@ function wireChat() {
     const sendBtn = document.getElementById('chatSend');
     sendBtn.disabled = true;
     els.chatInput.disabled = true;
-    const thinking = addMsg('디자인을 만들고 있어요…', 'ai');
+    const image = pendingImage;
+    clearAttachment();
+    const thinking = addMsg(image ? '사진을 살펴보고 있어요…' : '디자인을 만들고 있어요…', 'ai');
 
     try {
-      const res = await requestDesign(config, text);
+      // 로그인 상태면 사진을 드라이브에 올려 청첩장에 바로 쓸 수 있게 한다
+      if (image && session.sheetId && !image.url) {
+        try {
+          image.url = await uploadImageToDrive(image.blob);
+        } catch { /* 업로드 실패 시 참고용으로만 전달 */ }
+      }
+      const res = await requestDesign(config, text || '이 사진을 활용해줘', image || undefined);
       const applied = applyAiResult(res);
       thinking.remove();
       addMsg(res.reply || '적용했어요.', 'ai', applied ? '미리보기에 적용됨' : null);
@@ -553,10 +588,54 @@ function wireChat() {
   els.chatInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') send(); });
 }
 
-function addMsg(text, who, applied) {
+/* ── 사진 첨부 처리 ── */
+
+async function setAttachment(file) {
+  if (!file || !file.type.startsWith('image/')) return;
+  try {
+    const resized = await resizeImage(file, 1280);
+    pendingImage = resized;
+    document.getElementById('attachThumb').src = resized.dataUrl;
+    document.getElementById('attachLabel').textContent =
+      session.sheetId ? '사진 첨부됨 — 색감 참고나 청첩장 배치에 쓸 수 있어요' : '사진 첨부됨 — 색감 참고용 (배치는 로그인 후)';
+    document.getElementById('attachPreview').classList.add('show');
+  } catch {
+    toast('사진을 읽지 못했어요. 다른 파일로 시도해 주세요');
+  }
+}
+
+function clearAttachment() {
+  pendingImage = null;
+  document.getElementById('attachPreview')?.classList.remove('show');
+}
+
+/** 이미지 축소 → JPEG base64 (AI 전송/드라이브 업로드 공용) */
+async function resizeImage(file, maxDim) {
+  const bitmap = await createImageBitmap(file);
+  const scale = Math.min(1, maxDim / Math.max(bitmap.width, bitmap.height));
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.round(bitmap.width * scale);
+  canvas.height = Math.round(bitmap.height * scale);
+  canvas.getContext('2d').drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  bitmap.close();
+  const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+  const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.85));
+  return { blob, dataUrl, base64: dataUrl.split(',')[1], mime: 'image/jpeg' };
+}
+
+function addMsg(text, who, applied, photoUrl) {
   const div = document.createElement('div');
   div.className = 'msg msg-' + (who === 'user' ? 'user' : 'ai');
-  div.textContent = text;
+  if (photoUrl) {
+    const img = document.createElement('img');
+    img.className = 'msg-photo';
+    img.src = photoUrl;
+    img.alt = '첨부한 사진';
+    div.appendChild(img);
+    div.appendChild(document.createTextNode(text));
+  } else {
+    div.textContent = text;
+  }
   if (applied) {
     const span = document.createElement('span');
     span.className = 'applied';

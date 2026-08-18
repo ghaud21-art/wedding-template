@@ -155,6 +155,37 @@ export async function saveConfigToSheet(sheetId, config) {
   });
 }
 
+/* ───────── 사진 업로드 (편집자) ───────── */
+
+/**
+ * 이미지를 내 드라이브에 올리고 "링크 공개" 후 직접 보기 URL 반환.
+ * AI 채팅에 첨부한 사진을 청첩장에 바로 쓸 수 있게 한다.
+ */
+export async function uploadImageToDrive(blob) {
+  const token = await ensureToken(true);
+  const meta = {
+    name: `청첩장 사진 ${new Date().toISOString().replace(/[:T]/g, '-').slice(0, 19)}.jpg`,
+  };
+  const form = new FormData();
+  form.append('metadata', new Blob([JSON.stringify(meta)], { type: 'application/json' }));
+  form.append('file', blob);
+
+  const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: form,
+  });
+  if (!res.ok) throw new Error(`사진 업로드 실패 (${res.status})`);
+  const { id } = await res.json();
+
+  await authedFetch(`https://www.googleapis.com/drive/v3/files/${id}/permissions`, {
+    method: 'POST',
+    body: JSON.stringify({ role: 'reader', type: 'anyone' }),
+  });
+
+  return `https://lh3.googleusercontent.com/d/${id}`;
+}
+
 /* ───────── 공개 읽기 (하객 뷰어, 로그인 없음) ───────── */
 
 async function publicValues(sheetId, range) {

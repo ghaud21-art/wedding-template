@@ -36,21 +36,33 @@ sectionSpacing(섹션 간격, 예 "44px") divider("solid"|"dashed"|"dotted"|"non
 
 ## 태도
 - 요청이 모호하면 합리적으로 해석해서 일단 적용하고, reply에 무엇을 했는지 말한다.
-- 디자인과 무관한 질문에는 design/blocks를 null로 두고 reply로만 답한다.`;
+- 디자인과 무관한 질문에는 design/blocks를 null로 두고 reply로만 답한다.
+
+## 첨부 사진
+- 사용자가 사진을 첨부하면: 색감/분위기를 요청할 때는 사진의 팔레트를 추출해 tokens에 반영한다.
+- 사진에 "업로드된 URL"이 함께 오면: 사용자가 사진 배치를 원할 때 그 URL을 intro의 mainPhotoUrl 또는 gallery의 photos 배열에 넣는다 (blocks로 반환).
+- URL이 없는 사진은 참고용으로만 쓰고, 배치 요청에는 "로그인 후 첨부하면 바로 넣어드릴 수 있어요"라고 reply로 안내한다.`;
 
 const history = [];
 
 /**
+ * @param {object} config 현재 설정
+ * @param {string} userMessage 사용자 요청
+ * @param {{mime:string, base64:string, url?:string}} [image] 첨부 사진
  * @returns {Promise<{reply:string, design:object|null, blocks:array|null}>}
  */
-export async function requestDesign(config, userMessage) {
-  const contents = [
-    ...history,
-    {
-      role: 'user',
-      parts: [{ text: `현재 설정 JSON:\n${JSON.stringify(config)}\n\n요청: ${userMessage}` }],
-    },
-  ];
+export async function requestDesign(config, userMessage, image) {
+  let text = `현재 설정 JSON:\n${JSON.stringify(config)}\n\n요청: ${userMessage}`;
+  const parts = [];
+  if (image) {
+    text += image.url
+      ? `\n\n[첨부 사진 있음 — 업로드된 URL: ${image.url}]`
+      : '\n\n[첨부 사진 있음 — 참고용, 업로드 URL 없음]';
+    parts.push({ inline_data: { mime_type: image.mime, data: image.base64 } });
+  }
+  parts.unshift({ text });
+
+  const contents = [...history, { role: 'user', parts }];
 
   const data = await aiGenerate({
     systemInstruction: { parts: [{ text: SYSTEM }] },
@@ -58,10 +70,10 @@ export async function requestDesign(config, userMessage) {
     generationConfig: { responseMimeType: 'application/json', temperature: 0.7 },
   });
 
-  const text = (data.candidates?.[0]?.content?.parts || []).map((p) => p.text || '').join('');
+  const answer = (data.candidates?.[0]?.content?.parts || []).map((p) => p.text || '').join('');
   let parsed;
   try {
-    parsed = JSON.parse(text);
+    parsed = JSON.parse(answer);
   } catch {
     throw new Error('AI 응답을 해석하지 못했어요. 다시 요청해 주세요.');
   }
