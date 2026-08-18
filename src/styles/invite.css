@@ -32,6 +32,11 @@
 .inv section {
   padding: var(--inv-section-spacing) 26px;
   border-bottom: 1px var(--inv-divider, solid) var(--inv-line);
+  /* 섹션 단위 장식 효과(::before 등)가 그 섹션 크기를 기준으로 배치되게 함.
+     이게 없으면 절대 위치 효과가 .inv 전체(전체 스크롤 높이) 기준으로
+     퍼져서, 화면엔 거의 안 보이고 한참 아래로 스크롤해야 나타난다. */
+  position: relative;
+  overflow: hidden;
 }
 .inv section:last-of-type { border-bottom: none; }
 .inv .sec-eyebrow {
