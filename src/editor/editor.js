@@ -650,9 +650,13 @@ function addMsg(text, who, applied, photoUrl) {
 /** AI 응답을 설정에 반영. 하나라도 적용했으면 true */
 function applyAiResult(res) {
   let applied = false;
+  const TOKEN_KEYS = ['bg', 'ink', 'sub', 'accent', 'line', 'card', 'displayFont', 'bodyFont', 'radius', 'sectionSpacing', 'divider'];
   if (res.design && typeof res.design === 'object') {
     if (res.design.tokens && typeof res.design.tokens === 'object') {
-      Object.assign(config.design.tokens, res.design.tokens);
+      // 알 수 없는 키는 버린다 (AI가 임의 키를 만들어도 설정이 오염되지 않게)
+      for (const k of TOKEN_KEYS) {
+        if (res.design.tokens[k] != null) config.design.tokens[k] = res.design.tokens[k];
+      }
       applied = true;
     }
     if (typeof res.design.customCss === 'string') {
