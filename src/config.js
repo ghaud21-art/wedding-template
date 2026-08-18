@@ -5,13 +5,13 @@
 // ─────────────────────────────────────────────────────────────
 
 /** Google Cloud Console에서 발급한 OAuth 2.0 클라이언트 ID (웹 애플리케이션) */
-export const GOOGLE_CLIENT_ID = 'YOUR_OAUTH_CLIENT_ID.apps.googleusercontent.com';
+export const GOOGLE_CLIENT_ID = '406690049841-3ppaoecq9jgalqr9343fcdj1k7ieei7i.apps.googleusercontent.com';
 
 /** Sheets API 읽기 전용 조회용 API 키 (하객 뷰어에서 사용, HTTP 리퍼러 제한 권장) */
 export const GOOGLE_API_KEY = 'YOUR_API_KEY';
 
 /** GAS 웹앱 배포 URL (방명록/RSVP 쓰기 + Gemini 프록시) */
-export const GAS_ENDPOINT = 'https://script.google.com/macros/s/YOUR_DEPLOY_ID/exec';
+export const GAS_ENDPOINT = 'https://script.google.com/macros/s/AKfycbx0hKqBtt1pGZfhEOr7Bonkuk14yBL-fARO4vBqrwfwk2jle4pDNOB3NnpxL3HOd80/exec';
 
 /**
  * GAS를 배포한 구글 계정 이메일.
@@ -19,7 +19,7 @@ export const GAS_ENDPOINT = 'https://script.google.com/macros/s/YOUR_DEPLOY_ID/e
  * 시트를 만들 때 이 계정에 편집 권한을 자동으로 부여한다.
  * 비워두면 권한 부여를 건너뛴다 (방명록/RSVP 기록 비활성).
  */
-export const GAS_OWNER_EMAIL = '';
+export const GAS_OWNER_EMAIL = 'ghaud21@gmail.com';
 
 /**
  * 편집자 OAuth scope
