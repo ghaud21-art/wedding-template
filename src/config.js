@@ -8,7 +8,7 @@
 export const GOOGLE_CLIENT_ID = '406690049841-3ppaoecq9jgalqr9343fcdj1k7ieei7i.apps.googleusercontent.com';
 
 /** Sheets API 읽기 전용 조회용 API 키 (하객 뷰어에서 사용, HTTP 리퍼러 제한 권장) */
-export const GOOGLE_API_KEY = 'YOUR_API_KEY';
+export const GOOGLE_API_KEY = 'AIzaSyBvyigVIPx1pxVd3BOcRbSr5LNsbjdWY6A';
 
 /** GAS 웹앱 배포 URL (방명록/RSVP 쓰기 + Gemini 프록시) */
 export const GAS_ENDPOINT = 'https://script.google.com/macros/s/AKfycbx0hKqBtt1pGZfhEOr7Bonkuk14yBL-fARO4vBqrwfwk2jle4pDNOB3NnpxL3HOd80/exec';
