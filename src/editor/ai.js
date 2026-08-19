@@ -59,6 +59,13 @@ sectionSpacing(섹션 간격, 예 "44px") divider("solid"|"dashed"|"dotted"|"non
 ## 태도
 - 요청이 모호하면 합리적으로 해석해서 일단 적용하고, reply에 무엇을 했는지 말한다.
 - 디자인과 무관한 질문에는 design/blocks를 null로 두고 reply로만 답한다.
+- 절대 금지: 사용자가 시각적 변경(색·배경·효과·문구 등)을 요청했는데
+  design과 blocks를 둘 다 null로 두고 "이미 적용되어 있다"거나
+  "그대로 사용하면 된다"고만 답하는 것. 요청받은 "현재 설정 JSON"에
+  실제로 그 내용이 없다면 반드시 design/blocks를 채워서 실제로 반영한다.
+  이미 요청한 대로 되어 있다고 판단되는 경우에도, reply에서 현재 값을
+  구체적으로 근거를 들어 설명한다 (예: "지금 배경이 #221E33으로 이미
+  어둡게 되어 있어요"). 근거 없이 "이미 되어 있다"고만 말하지 않는다.
 
 ## 첨부 사진
 - 사용자가 사진을 첨부하면: 색감/분위기를 요청할 때는 사진의 팔레트를 추출해 tokens에 반영한다.
@@ -66,6 +73,45 @@ sectionSpacing(섹션 간격, 예 "44px") divider("solid"|"dashed"|"dotted"|"non
 - URL이 없는 사진은 참고용으로만 쓰고, 배치 요청에는 "로그인 후 첨부하면 바로 넣어드릴 수 있어요"라고 reply로 안내한다.`;
 
 const history = [];
+
+/** Gemini 응답에서 JSON을 최대한 견고하게 뽑아낸다 (마크다운 펜스·잘림 대응) */
+function parseAiJson(data) {
+  const finish = data.candidates?.[0]?.finishReason;
+  const answer = (data.candidates?.[0]?.content?.parts || []).map((p) => p.text || '').join('');
+  if (!answer) return null;
+  try {
+    return JSON.parse(answer);
+  } catch { /* 아래에서 복구 시도 */ }
+
+  // ```json … ``` 펜스 제거 후 재시도
+  const fenced = answer.match(/```(?:json)?\s*([\s\S]*?)```/);
+  if (fenced) {
+    try { return JSON.parse(fenced[1]); } catch { /* 계속 */ }
+  }
+  // 첫 { 부터 마지막 } 까지만 잘라서 재시도 (앞뒤 잡담 제거)
+  const start = answer.indexOf('{');
+  const end = answer.lastIndexOf('}');
+  if (start !== -1 && end > start) {
+    try { return JSON.parse(answer.slice(start, end + 1)); } catch { /* 계속 */ }
+  }
+  if (finish === 'MAX_TOKENS') return null; // 응답이 중간에 잘림 — 재시도 대상
+  return null;
+}
+
+/** 첫 시도가 깨졌을 때 한 번만 더 시도 (짧고 명확하게 재요청) */
+async function retryOnBadJson(contents, genConfig) {
+  const retryContents = [
+    ...contents,
+    { role: 'model', parts: [{ text: '(형식이 올바르지 않은 응답)' }] },
+    { role: 'user', parts: [{ text: '방금 응답이 올바른 JSON이 아니었어요. 마크다운이나 설명 없이, 유효한 JSON 객체 하나만 다시 출력해 주세요.' }] },
+  ];
+  try {
+    const data = await aiGenerate({ systemInstruction: { parts: [{ text: SYSTEM }] }, contents: retryContents, generationConfig: genConfig });
+    return parseAiJson(data);
+  } catch {
+    return null;
+  }
+}
 
 /**
  * @param {object} config 현재 설정
@@ -85,20 +131,26 @@ export async function requestDesign(config, userMessage, image) {
   parts.unshift({ text });
 
   const contents = [...history, { role: 'user', parts }];
+  const genConfig = {
+    responseMimeType: 'application/json',
+    temperature: 0.7,
+    maxOutputTokens: 8192,
+    // 내부 "생각" 토큰이 응답 예산을 잡아먹어 JSON이 잘리는 걸 막는다.
+    // 구조화된 JSON 생성엔 긴 추론이 필요 없다. (pro 모델 등 미지원 시 자동 재시도)
+    thinkingConfig: { thinkingBudget: 0 },
+  };
 
-  const data = await aiGenerate({
-    systemInstruction: { parts: [{ text: SYSTEM }] },
-    contents,
-    generationConfig: { responseMimeType: 'application/json', temperature: 0.7 },
-  });
-
-  const answer = (data.candidates?.[0]?.content?.parts || []).map((p) => p.text || '').join('');
-  let parsed;
+  let data;
   try {
-    parsed = JSON.parse(answer);
-  } catch {
-    throw new Error('AI 응답을 해석하지 못했어요. 다시 요청해 주세요.');
+    data = await aiGenerate({ systemInstruction: { parts: [{ text: SYSTEM }] }, contents, generationConfig: genConfig });
+  } catch (e) {
+    if (!/thinking/i.test(e.message)) throw e;
+    delete genConfig.thinkingConfig; // thinkingBudget 미지원 모델 폴백
+    data = await aiGenerate({ systemInstruction: { parts: [{ text: SYSTEM }] }, contents, generationConfig: genConfig });
   }
+
+  const parsed = parseAiJson(data) || await retryOnBadJson(contents, genConfig);
+  if (!parsed) throw new Error('AI 응답을 해석하지 못했어요. 다시 요청해 주세요.');
 
   // 대화 맥락은 텍스트만 가볍게 유지 (설정 JSON은 매번 새로 전달)
   history.push(
